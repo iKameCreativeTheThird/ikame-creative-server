@@ -1,0 +1,28 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+
+# Output of build tools
+/build/
+/bin/
+
+# Dependency directories
+/vendor/
+
+# Go workspace file
+*.code-workspace
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env files
+.env

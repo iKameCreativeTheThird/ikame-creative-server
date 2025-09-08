@@ -4,21 +4,29 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"performance-dashboard-backend/pkg/asana"
+	asana "performance-dashboard-backend/internal/asana"
+	db_handler "performance-dashboard-backend/internal/database"
 
 	"github.com/joho/godotenv"
 )
 
-func main() {
-	// Replace with your Asana token and project ID
+func loadEnv() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
-		return
 	}
+}
+
+func connectDatabase() {
+	err := db_handler.ConnectMongoDB()
+	if err != nil {
+		log.Fatal("Database connection error:", err)
+	}
+}
+
+func fetchAsanaTasks() {
 	token := os.Getenv("ASANA_TOKEN") // safer to set as env var
 	projectID := os.Getenv("ASANA_PROJECT_ID")
-
 	tasks, err := asana.FetchTasks(token, projectID)
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -36,4 +44,11 @@ func main() {
 		}
 		fmt.Println()
 	}
+}
+
+func main() {
+	loadEnv()
+	connectDatabase()
+	// fetchAsanaTasks()
+
 }

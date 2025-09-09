@@ -48,7 +48,7 @@ func fetchAsanaTasks() {
 
 func main() {
 	loadEnv()
-	connectDatabase()
-	// fetchAsanaTasks()
+	// connectDatabase()
+	fetchAsanaTasks()
 
 }

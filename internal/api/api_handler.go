@@ -91,7 +91,7 @@ func PostHandlerPerformancePoint(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		results = append(results, res)
+		results = append(results, res...)
 	}
 	w.Header().Set("Content-Type", "application/json")
 

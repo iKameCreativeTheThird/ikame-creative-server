@@ -45,6 +45,14 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostHandlerPerformancePoint(w http.ResponseWriter, r *http.Request) {
+
+	/// Example Body
+	// {
+	//     "startDate": "2025-07-01T00:00:00.000Z",
+	//     "endDate": "2025-07-30T23:59:59.000Z",
+	//     "identifiers": [ "chuongpt@ikameglobal.com", "tuongnm@ikameglobal.com"]
+	// }
+
 	var body map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -54,7 +62,7 @@ func PostHandlerPerformancePoint(w http.ResponseWriter, r *http.Request) {
 	isTeamStr := r.URL.Query().Get("isTeam")
 	startTimeStr := body["startDate"].(string)
 	endTimeStr := body["endDate"].(string)
-	identifiersInterface := body["identifier"].([]interface{})
+	identifiersInterface := body["identifiers"].([]interface{})
 	identifiers := make([]string, len(identifiersInterface))
 	for i, v := range identifiersInterface {
 		identifiers[i] = v.(string)

@@ -3,9 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	asana "performance-dashboard-backend/internal/asana"
-	db_handler "performance-dashboard-backend/internal/database"
+	db "performance-dashboard-backend/internal/database"
+
+	api "performance-dashboard-backend/internal/api"
 
 	"github.com/joho/godotenv"
 )
@@ -18,7 +21,7 @@ func loadEnv() {
 }
 
 func connectDatabase() {
-	err := db_handler.ConnectMongoDB()
+	err := db.ConnectMongoDB()
 	if err != nil {
 		log.Fatal("Database connection error:", err)
 	}
@@ -59,4 +62,7 @@ func main() {
 	// 	log.Fatal("Error fetching performance point:", err)
 	// }
 	// fmt.Printf("Performance Point: %+v\n", performancePoint)
+
+	api.Init()
+	log.Fatal(http.ListenAndServe(":"+os.Getenv("SERVER_PORT"), nil))
 }

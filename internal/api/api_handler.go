@@ -51,33 +51,31 @@ func PostHandlerPerformancePoint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isTeam := r.URL.Query().Get("isTeam")
+	isTeamStr := r.URL.Query().Get("isTeam")
 	startTimeStr := body["startDate"].(string)
 	endTimeStr := body["endDate"].(string)
+	identifiersInterface := body["identifier"].([]interface{})
+	identifiers := make([]string, len(identifiersInterface))
+	for i, v := range identifiersInterface {
+		identifiers[i] = v.(string)
+	}
 	startTime, _ := time.Parse(time.RFC3339, startTimeStr)
 	endTime, _ := time.Parse(time.RFC3339, endTimeStr)
 
-	fmt.Printf("isTeam: %s, startTime: %s, endTime: %s\n", isTeam, startTimeStr, endTimeStr)
+	fmt.Println("identifier count:", identifiers)
+	var results []*db.PerformancePoint
+	for _, id := range identifiers {
 
-	if isTeam == "true" {
-		team := body["team"].(string)
-		res, err := db.GetPerformancePointForTeam(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_COMPLETED_TASK"), team, startTime, endTime)
+		res, err := db.GetPerformancePoint(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_COMPLETED_TASK"), id, startTime, endTime, isTeamStr == "true")
 		if err != nil {
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(res)
-	} else {
-		email := body["email"].(string)
-		res, err := db.GetPerformancePointForIndividual(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_COMPLETED_TASK"), email, startTime, endTime)
-		if err != nil {
-			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(res)
+		results = append(results, res)
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(results)
 }
 
 func Init() {

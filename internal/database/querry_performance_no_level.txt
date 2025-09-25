@@ -1,7 +1,8 @@
 [
-  // 1. Lọc theo done_date
+  // 1. Filter by done_date
   {
     $match: {
+      task_name: "Bunny",
       done_date: {
         $gte: new Date("2025-07-01T00:00:00.000Z"),
         $lte: new Date("2025-07-30T23:59:59.000Z")
@@ -9,39 +10,7 @@
     }
   },
 
-  // 2. Lookup level theo team
-  {
-    $lookup: {
-      from: "level",
-      localField: "team",
-      foreignField: "team",
-      as: "level_info"
-    }
-  },
-  { $unwind: "$level_info" },
-
-  // 3. Tính performance_point từ levelPoint
-  {
-    $addFields: {
-      performance_point: {
-        $let: {
-          vars: {
-            idx: { $subtract: ["$level", 1] },
-            arr: "$level_info.levelPoint"
-          },
-          in: {
-            $cond: [
-              { $lt: ["$$idx", { $size: "$$arr" }] },
-              { $arrayElemAt: ["$$arr", "$$idx"] },
-              { $arrayElemAt: ["$$arr", 0] }
-            ]
-          }
-        }
-      }
-    }
-  },
-
-  // 4. Lookup creative-tool theo tool
+  // 2. Lookup creative-tool by tool
   {
     $lookup: {
       from: "creative-tool",
@@ -51,9 +20,10 @@
     }
   },
 
-  // 5. Tách tool loại t và q
+  // 3. Separate tool type "t" and "q"
   {
     $addFields: {
+      performance_point: "$level",
       tool_points_t: {
         $map: {
           input: {
@@ -103,12 +73,12 @@
     }
   },
 
-  // 6. Tính tool_factor và creative_process_point
+  // 4. Calculate tool_factor and creative_process_point
   {
     $addFields: {
       tool_factor: {
         $cond: {
-          if: { $eq: [{ $size: "$tool_points_t" }, 0] }, // nếu không có tool "t"
+          if: { $eq: [{ $size: "$tool_points_t" }, 0] },
           then: 0,
           else: {
             $reduce: {
@@ -139,7 +109,7 @@
     }
   },
 
-  // 7. Tính creative_task_point
+  // 5. Calculate creative_task_point
   {
     $addFields: {
       creative_task_point: {
@@ -148,7 +118,7 @@
     }
   },
 
-  // 8. Tính base_point
+  // 6. Calculate base_point
   {
     $addFields: {
       base_point: {
@@ -160,7 +130,7 @@
     }
   },
 
-  // 9. Project các field cần thiết
+  // 7. Project fields
   {
     $project: {
       task_name: 1,
@@ -178,7 +148,7 @@
     }
   },
 
-  // 10. Group tổng
+  // 8. Group totals
   {
     $group: {
       _id: null,

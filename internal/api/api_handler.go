@@ -1,15 +1,15 @@
 package apihandler
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
-	"errors"
+	"log"
 	"net/http"
 	"os"
 	db "performance-dashboard-backend/internal/database"
 	collectionmodels "performance-dashboard-backend/internal/database/collection_models"
 	"time"
-
-	"github.com/gorilla/sessions"
 )
 
 // CORS middleware
@@ -30,11 +30,13 @@ type Response struct {
 	Message string `json:"message"`
 }
 
-const USER_ID = "user_id"
-const AUTH_SESSION = "auth-session"
-const TEAM_ROLE = "team_role"
+type SessionData struct {
+	Token    string
+	TeamRole []*db.TeamRole
+	Email    string
+}
 
-var sessionStore = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
+var sessions = map[string]SessionData{}
 
 func PostHandlerPerformancePoint(w http.ResponseWriter, r *http.Request) {
 
@@ -82,6 +84,38 @@ func PostHandlerStaffMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	teamRoles, ok := GetUserRole(r.Header.Get("Authorization"))
+	if !ok || teamRoles == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// if contains Admin role, allow all teams
+	isAdmin := false
+	for _, role := range teamRoles {
+		if role.Role == "Admin" {
+			isAdmin = true
+			break
+		}
+	}
+
+	var managerOfTeams []string
+	if !isAdmin {
+		for _, role := range teamRoles {
+			if role.Role == "Manager" {
+				managerOfTeams = append(managerOfTeams, role.Team)
+			}
+		}
+	}
+
+	log.Println("User roles:", teamRoles, "isAdmin:", isAdmin, "is Manager:", len(managerOfTeams) > 0)
+
+	email, ok := GetEmailFromToken(r.Header.Get("Authorization"))
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var body map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -91,7 +125,7 @@ func PostHandlerStaffMember(w http.ResponseWriter, r *http.Request) {
 
 	var results []*collectionmodels.Member
 
-	if len(teamsStrs) == 0 {
+	if len(teamsStrs) == 0 && isAdmin {
 		// If no teams are specified, return all members
 		res, err := db.GetMembersByTeam(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"), "")
 		if err != nil {
@@ -100,15 +134,42 @@ func PostHandlerStaffMember(w http.ResponseWriter, r *http.Request) {
 		}
 		results = append(results, res...)
 	} else {
-		team := make([]string, len(teamsStrs))
-		for i, v := range teamsStrs {
-			team[i] = v.(string)
-			res, err := db.GetMembersByTeam(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"), team[i])
+		teams := make([]string, len(teamsStrs))
+
+		if len(teamsStrs) == 0 && len(managerOfTeams) > 0 {
+			teams = managerOfTeams
+		}
+		for _, t := range teamRoles {
+			if !contains(teams, t.Team) {
+				teams = append(teams, t.Team)
+			}
+		}
+		log.Println("Teams to query:", teams)
+
+		for _, team := range teams {
+			res, err := db.GetMembersByTeam(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"), team)
 			if err != nil {
 				http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 			results = append(results, res...)
+		}
+
+		log.Println("Results length:", len(results))
+
+		if len(results) > 0 {
+			//log.Printf("User %s with roles %+v requested teams %+v, returning %d members", email, teamRoles, teams, len(results))
+			if !isAdmin && email != "" {
+				// if you are manager of a specific team, return all members in your teams
+				// if you are not manager of that team, return only your own info
+				var filteredResults []*collectionmodels.Member
+				for _, member := range results {
+					if contains(managerOfTeams, member.Team) || member.Email == email {
+						filteredResults = append(filteredResults, member)
+					}
+				}
+				results = filteredResults
+			}
 		}
 	}
 
@@ -116,52 +177,83 @@ func PostHandlerStaffMember(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(results)
 }
 
+func contains(slice []string, s string) bool {
+	for _, v := range slice {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	email := r.FormValue("email")
+	body := map[string]string{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	email := body["email"]
 
 	isInDatabase, err := db.IsEmailInDatabase(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"), email)
-	if err != nil && isInDatabase {
+
+	log.Printf("Login attempt for email: %s Is in db %s", email, isInDatabase)
+
+	if err == nil && isInDatabase {
 
 		teamRoles, _ := db.GetMemberRoles(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"), email)
+		// Set session data
+		// use bcrypt
+		hash := sha256.New()
+		hash.Write([]byte(email + time.Now().String()))
+		token := hex.EncodeToString(hash.Sum(nil))
+		sessions[token] = SessionData{
+			Token:    token,
+			TeamRole: teamRoles,
+			Email:    email,
+		}
 
-		session, _ := sessionStore.Get(r, AUTH_SESSION)
-		session.Values[USER_ID] = email
-		session.Values[TEAM_ROLE] = teamRoles
-		session.Save(r, w)
+		for _, role := range teamRoles {
+			log.Printf("Role for %s: %+v", email, role)
+		}
 
-		w.Write([]byte("Login success"))
+		log.Printf("Generated token for %s: %s", email, token)
+
+		// Return token
+		w.Header().Set("Content-Type", "application/json")
+		// parse this correctly to json format
+		json.NewEncoder(w).Encode(map[string]string{"token": token})
 	} else {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 	}
 }
 
-func GetTeamRoles(r *http.Request) ([]db.TeamRole, error) {
-	session, err := sessionStore.Get(r, AUTH_SESSION)
-	if err != nil {
-		return nil, err
+func GetUserRole(token string) ([]*db.TeamRole, bool) {
+	session, exists := sessions[token]
+	if !exists {
+		return nil, false
 	}
-	teamRoles, ok := session.Values[TEAM_ROLE].([]db.TeamRole)
-	if !ok {
-		return nil, errors.New("err: invalid team roles")
-	}
-	return teamRoles, nil
+	return session.TeamRole, true
 }
 
-func IsAuthenticated(r *http.Request) bool {
-	session, err := sessionStore.Get(r, AUTH_SESSION)
-	if err != nil {
-		return false
+func ClearSessionMapSchedule() {
+	for {
+		time.Sleep(24 * time.Hour)
+		sessions = map[string]SessionData{}
 	}
-	_, ok := session.Values[USER_ID].(string)
-	return ok
+}
+
+func GetEmailFromToken(token string) (string, bool) {
+	session, exists := sessions[token]
+	if !exists {
+		return "", false
+	}
+	return session.Email, true
 }
 
 func Init() {
 	http.Handle("/login", CORSMiddleware(http.HandlerFunc(LoginHandler)))
 	http.Handle("/post/performance-point", CORSMiddleware(http.HandlerFunc(PostHandlerPerformancePoint)))
 	http.Handle("/post/staff-member", CORSMiddleware(http.HandlerFunc(PostHandlerStaffMember)))
-	// http.Handle("/", CORSMiddleware(http.HandlerFunc(RootHandler)))
-	// http.Handle("/get", CORSMiddleware(http.HandlerFunc(GetHandler)))
-	// http.Handle("/post", CORSMiddleware(http.HandlerFunc(PostHandler)))
+
+	go ClearSessionMapSchedule()
 }

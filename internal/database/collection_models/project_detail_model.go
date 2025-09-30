@@ -21,7 +21,7 @@ type ProjectDetail struct {
 	UA        string             `bson:"ua"`
 }
 
-func InstertNewProjectDetailToDatabase(client *mongo.Client, url, dbName, collName string, projectDetail *ProjectDetail) error {
+func InstertNewProjectDetailToDatabase(client *mongo.Client, dbName, collName string, projectDetail *ProjectDetail) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	collection := client.Database(dbName).Collection(collName)
@@ -29,7 +29,7 @@ func InstertNewProjectDetailToDatabase(client *mongo.Client, url, dbName, collNa
 	return err
 }
 
-func UpdateProjectDetailToDatabase(client *mongo.Client, url, dbName, collName string, projectDetail *ProjectDetail) error {
+func UpdateProjectDetailToDatabase(client *mongo.Client, dbName, collName string, projectDetail *ProjectDetail) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	collection := client.Database(dbName).Collection(collName)
@@ -37,7 +37,7 @@ func UpdateProjectDetailToDatabase(client *mongo.Client, url, dbName, collName s
 	return err
 }
 
-func DeleteProjectDetailInDatabase(client *mongo.Client, url, dbName, collName string, project string) error {
+func DeleteProjectDetailInDatabase(client *mongo.Client, dbName, collName string, project string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	collection := client.Database(dbName).Collection(collName)
@@ -46,7 +46,7 @@ func DeleteProjectDetailInDatabase(client *mongo.Client, url, dbName, collName s
 	return err
 }
 
-func GetAllProjectDetails(client *mongo.Client, url, dbName, collName string) ([]ProjectDetail, error) {
+func GetAllProjectDetails(client *mongo.Client, dbName, collName string) ([]ProjectDetail, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	collection := client.Database(dbName).Collection(collName)

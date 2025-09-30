@@ -55,3 +55,24 @@ func DeleteCreativeTool(client *mongo.Client, dbName, collectionName, team, tool
 	_, err := collection.DeleteOne(ctx, bson.M{"team": team, "tool_name": toolName})
 	return err
 }
+
+func GetAllCreativeTools(client *mongo.Client, dbName, collectionName string) ([]CreativeTool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	collection := client.Database(dbName).Collection(collectionName)
+	cursor, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []CreativeTool
+	for cursor.Next(ctx) {
+		var tool CreativeTool
+		if err := cursor.Decode(&tool); err != nil {
+			return nil, err
+		}
+		results = append(results, tool)
+	}
+	return results, nil
+}

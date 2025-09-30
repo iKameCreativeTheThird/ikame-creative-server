@@ -330,9 +330,8 @@ func HandleTeamWeeklyTarget(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(results)
 }
 
-// / ======================================================
-// / 	Team Members Handler
-// / ======================================================
+/// ======================================================
+/// ============= Team Members Handler ===================
 
 func HandleAddNewTeamMember(w http.ResponseWriter, r *http.Request) {
 
@@ -421,7 +420,188 @@ func HandleDeleteTeamMember(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"message": "Member deleted successfully"}`))
 }
 
+/// =========== End Team Members Handler ================
 /// =====================================================
+
+/// =====================================================
+/// ============ Project Details Handler ================
+
+func HandleAddNewProjectDetail(w http.ResponseWriter, r *http.Request) {
+	// TOOD : implement role-based access control
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	projectDetail := &collectionmodels.ProjectDetail{
+		ProjectID: int(body["ProjectID"].(float64)),
+		Project:   body["Project"].(string),
+		Research:  body["Research"].(string),
+		Art:       body["Art"].(string),
+		Concept:   body["Concept"].(string),
+		Video:     body["Video"].(string),
+		Pla:       body["Pla"].(string),
+		UA:        body["UA"].(string),
+	}
+
+	err := collectionmodels.InstertNewProjectDetailToDatabase(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_PROJECT_DETAIL"), projectDetail)
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Project detail added successfully"}`))
+}
+
+func HandleGetAllProjectDetails(w http.ResponseWriter, r *http.Request) {
+	// TODO : implement role-based access control
+
+	res, err := collectionmodels.GetAllProjectDetails(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_PROJECT_DETAIL"))
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
+}
+
+func HandleUpdateProjectDetail(w http.ResponseWriter, r *http.Request) {
+	// TOOD : implement role-based access control
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	projectDetail := &collectionmodels.ProjectDetail{
+		ProjectID: int(body["ProjectID"].(float64)),
+		Project:   body["Project"].(string),
+		Research:  body["Research"].(string),
+		Art:       body["Art"].(string),
+		Concept:   body["Concept"].(string),
+		Video:     body["Video"].(string),
+		Pla:       body["Pla"].(string),
+		UA:        body["UA"].(string),
+	}
+	err := collectionmodels.UpdateProjectDetailToDatabase(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_PROJECT_DETAIL"), projectDetail)
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Project detail updated successfully"}`))
+}
+
+func HandleDeleteProjectDetail(w http.ResponseWriter, r *http.Request) {
+	// TOOD : implement role-based access control
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	projectID := body["Project"].(string)
+	err := collectionmodels.DeleteProjectDetailInDatabase(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_PROJECT_DETAIL"), projectID)
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Project detail deleted successfully"}`))
+}
+
+/// =========== End Project Detail Handler ================
+/// =======================================================
+
+/// =======================================================
+/// =========== Creative Tool Handler =====================
+
+func HandleGetAllCreativeTools(w http.ResponseWriter, r *http.Request) {
+
+	// TOOD : implement role-based access control
+	res, err := collectionmodels.GetAllCreativeTools(db.GetMongoClient(), os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"))
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
+}
+
+func HandleUpdateCreativeTool(w http.ResponseWriter, r *http.Request) {
+	// TOOD : implement role-based access control
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	pointsInterface := body["Point"].([]interface{})
+	points := make([]int, len(pointsInterface))
+	for i, v := range pointsInterface {
+		points[i] = int(v.(float64))
+	}
+	tool := &collectionmodels.CreativeTool{
+		Team:     body["Team"].(string),
+		ToolName: body["ToolName"].(string),
+		Type:     body["Type"].(string),
+		Point:    points,
+	}
+	err := collectionmodels.UpdateCreativeTool(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_CREATIVE_TOOLS"), tool)
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Creative tool updated successfully"}`))
+}
+
+func HandleAddNewCreativeTool(w http.ResponseWriter, r *http.Request) {
+	// TOOD : implement role-based access control
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	pointsInterface := body["Point"].([]interface{})
+	points := make([]int, len(pointsInterface))
+	for i, v := range pointsInterface {
+		points[i] = int(v.(float64))
+	}
+	tool := &collectionmodels.CreativeTool{
+		Team:     body["Team"].(string),
+		ToolName: body["ToolName"].(string),
+		Type:     body["Type"].(string),
+		Point:    points,
+	}
+	err := collectionmodels.AddCreativeTool(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_CREATIVE_TOOLS"), tool)
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Creative tool added successfully"}`))
+}
+
+func HandleDeleteCreativeTool(w http.ResponseWriter, r *http.Request) {
+	// TOOD : implement role-based access control
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	team := body["Team"].(string)
+	toolName := body["ToolName"].(string)
+
+	err := collectionmodels.DeleteCreativeTool(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_CREATIVE_TOOLS"), team, toolName)
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Creative tool deleted successfully"}`))
+}
+
+/// =========== End Creative Tool Handler =================
+/// =======================================================
 
 func Init() {
 	http.Handle("/login", CORSMiddleware(http.HandlerFunc(LoginHandler)))
@@ -435,6 +615,16 @@ func Init() {
 	http.Handle("/post/update-team-member", CORSMiddleware(http.HandlerFunc(HandleUpdateTeamMember)))
 	http.Handle("/post/add-new-team-member", CORSMiddleware(http.HandlerFunc(HandleAddNewTeamMember)))
 	http.Handle("/post/delete-team-member", CORSMiddleware(http.HandlerFunc(HandleDeleteTeamMember)))
+
+	http.Handle("/get/project-details", CORSMiddleware(http.HandlerFunc(HandleGetAllProjectDetails)))
+	http.Handle("/post/add-new-project-detail", CORSMiddleware(http.HandlerFunc(HandleAddNewProjectDetail)))
+	http.Handle("/post/update-project-detail", CORSMiddleware(http.HandlerFunc(HandleUpdateProjectDetail)))
+	http.Handle("/post/delete-project-detail", CORSMiddleware(http.HandlerFunc(HandleDeleteProjectDetail)))
+
+	http.Handle("/get/creative-tools", CORSMiddleware(http.HandlerFunc(HandleGetAllCreativeTools)))
+	http.Handle("/post/update-creative-tool", CORSMiddleware(http.HandlerFunc(HandleUpdateCreativeTool)))
+	http.Handle("/post/add-new-creative-tool", CORSMiddleware(http.HandlerFunc(HandleAddNewCreativeTool)))
+	http.Handle("/post/delete-creative-tool", CORSMiddleware(http.HandlerFunc(HandleDeleteCreativeTool)))
 
 	go ClearSessionMapSchedule()
 }

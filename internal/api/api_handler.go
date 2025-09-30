@@ -330,11 +330,111 @@ func HandleTeamWeeklyTarget(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(results)
 }
 
+// / ======================================================
+// / 	Team Members Handler
+// / ======================================================
+
+func HandleAddNewTeamMember(w http.ResponseWriter, r *http.Request) {
+
+	// TOOD : implement role-based access control
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	member := &collectionmodels.Member{
+		MemberID: body["MemberID"].(string),
+		Name:     body["Name"].(string),
+		YOB:      int(body["YOB"].(float64)),
+		Email:    body["Email"].(string),
+		Role:     body["Role"].(string),
+		Team:     body["Team"].(string),
+	}
+
+	log.Println("Adding new member:", member)
+
+	err := collectionmodels.InsertMemberToDataBase(db.GetMongoClient(), os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"), member)
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Member added successfully"}`))
+}
+
+func HandleGetAllTeamMembers(w http.ResponseWriter, r *http.Request) {
+
+	// TOOD : implement role-based access control
+
+	res, err := collectionmodels.GetAllMembers(db.GetMongoClient(), os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"))
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
+}
+
+func HandleUpdateTeamMember(w http.ResponseWriter, r *http.Request) {
+	// TOOD : implement role-based access control
+
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	member := &collectionmodels.Member{
+		MemberID: body["MemberID"].(string),
+		Name:     body["Name"].(string),
+		YOB:      int(body["YOB"].(float64)),
+		Email:    body["Email"].(string),
+		Role:     body["Role"].(string),
+		Team:     body["Team"].(string),
+	}
+
+	err := collectionmodels.UpdateMemberToDataBase(db.GetMongoClient(), os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"), member)
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Member updated successfully"}`))
+}
+
+func HandleDeleteTeamMember(w http.ResponseWriter, r *http.Request) {
+	// TOOD : implement role-based access control
+
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	memberID := body["MemberID"].(string)
+	log.Println("Deleting member with ID:", memberID)
+
+	err := collectionmodels.DeleteMemberInDataBase(db.GetMongoClient(), os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"), memberID)
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Member deleted successfully"}`))
+}
+
+/// =====================================================
+
 func Init() {
 	http.Handle("/login", CORSMiddleware(http.HandlerFunc(LoginHandler)))
+
 	http.Handle("/post/performance-point", CORSMiddleware(http.HandlerFunc(PostHandlerPerformancePoint)))
 	http.Handle("/post/staff-member", CORSMiddleware(http.HandlerFunc(PostHandlerStaffMember)))
 	http.Handle("/get/last-week-team-performance", CORSMiddleware(http.HandlerFunc(HandleLastWeekTeamPerformance)))
 	http.Handle("/get/team-weekly-target", CORSMiddleware(http.HandlerFunc(HandleTeamWeeklyTarget)))
+
+	http.Handle("/get/team-members", CORSMiddleware(http.HandlerFunc(HandleGetAllTeamMembers)))
+	http.Handle("/post/update-team-member", CORSMiddleware(http.HandlerFunc(HandleUpdateTeamMember)))
+	http.Handle("/post/add-new-team-member", CORSMiddleware(http.HandlerFunc(HandleAddNewTeamMember)))
+	http.Handle("/post/delete-team-member", CORSMiddleware(http.HandlerFunc(HandleDeleteTeamMember)))
+
 	go ClearSessionMapSchedule()
 }

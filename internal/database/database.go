@@ -447,3 +447,7 @@ func GetTeamWeeklyTarget(uri, dbName, collName, team string) (*TeamWeeklyTarget,
 	}
 	return nil, nil
 }
+
+func GetMongoClient() *mongo.Client {
+	return client
+}

@@ -24,7 +24,17 @@ func UpdateMemberToDataBase(client *mongo.Client, url, dbName, collName string, 
 	defer cancel()
 	collection := client.Database(dbName).Collection(collName)
 
-	_, err := collection.UpdateOne(ctx, bson.M{"email": member.Email}, bson.M{"$set": member})
+	_, err := collection.UpdateOne(
+		ctx,
+		bson.M{"id": member.MemberID},
+		bson.M{"$set": bson.M{
+			"name":  member.Name,
+			"yob":   member.YOB,
+			"email": member.Email,
+			"role":  member.Role,
+			"team":  member.Team,
+		}},
+	)
 	return err
 }
 
@@ -37,11 +47,11 @@ func InsertMemberToDataBase(client *mongo.Client, url, dbName, collName string, 
 	return err
 }
 
-func DeleteMemberInDataBase(client *mongo.Client, url, dbName, collName, email string) error {
+func DeleteMemberInDataBase(client *mongo.Client, url, dbName, collName, memberID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	collection := client.Database(dbName).Collection(collName)
-	_, err := collection.DeleteOne(ctx, bson.M{"email": email})
+	_, err := collection.DeleteOne(ctx, bson.M{"id": memberID})
 	return err
 }
 

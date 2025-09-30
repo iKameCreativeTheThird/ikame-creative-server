@@ -416,11 +416,6 @@ func GetAllTeams(uri, dbName, collName string) ([]string, error) {
 
 func GetTeamWeeklyTarget(uri, dbName, collName, team string) (*TeamWeeklyTarget, error) {
 
-	log.Println("Fetching team weekly target for team:", team)
-	log.Println("Using URI:", uri)
-	log.Println("Using DB Name:", dbName)
-	log.Println("Using Collection Name:", collName)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	collection := client.Database(dbName).Collection(collName)

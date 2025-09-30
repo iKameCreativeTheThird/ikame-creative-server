@@ -103,8 +103,6 @@ func PostHandlerStaffMember(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Println("User roles:", teamRoles, "isAdmin:", isAdmin, "is Manager:", len(managerOfTeams) > 0)
-
 	email, ok := GetEmailFromToken(r.Header.Get("Authorization"))
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -139,7 +137,6 @@ func PostHandlerStaffMember(w http.ResponseWriter, r *http.Request) {
 				teams = append(teams, t.Team)
 			}
 		}
-		log.Println("Teams to query:", teams)
 
 		for _, team := range teams {
 			res, err := db.GetMembersByTeam(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"), team)
@@ -149,8 +146,6 @@ func PostHandlerStaffMember(w http.ResponseWriter, r *http.Request) {
 			}
 			results = append(results, res...)
 		}
-
-		log.Println("Results length:", len(results))
 
 		if len(results) > 0 {
 			if !isAdmin && email != "" {
@@ -268,8 +263,6 @@ func HandleLastWeekTeamPerformance(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Println("Fetching last week's performance for teams:", teams)
-
 	thisMonday := time.Now().AddDate(0, 0, -int(time.Now().Weekday())+1)
 	lastMonday := thisMonday.AddDate(0, 0, -7)
 	var results []*db.PerformancePoint
@@ -332,11 +325,6 @@ func HandleTeamWeeklyTarget(w http.ResponseWriter, r *http.Request) {
 			}
 			results = append(results, res)
 		}
-	}
-	log.Println("Returning team weekly targets for teams:", teams)
-	for _, r := range results {
-		// log.Printf("Team: %s, Point: %d, DateFrom: %s, DateTo: %s\n", r.Team, r.Point, r.DateFrom.Format("2006-01-02"), r.DateTo.Format("2006-01-02"))
-		log.Printf("Team: %s, Point: %f\n", r.Team, r.WeeklyTarget)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(results)

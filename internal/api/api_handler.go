@@ -517,7 +517,7 @@ func HandleDeleteProjectDetail(w http.ResponseWriter, r *http.Request) {
 func HandleGetAllCreativeTools(w http.ResponseWriter, r *http.Request) {
 
 	// TOOD : implement role-based access control
-	res, err := collectionmodels.GetAllCreativeTools(db.GetMongoClient(), os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"))
+	res, err := collectionmodels.GetAllCreativeTools(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_CREATIVE_TOOLS"))
 	if err != nil {
 		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -534,9 +534,9 @@ func HandleUpdateCreativeTool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pointsInterface := body["Point"].([]interface{})
-	points := make([]int, len(pointsInterface))
+	points := make([]float64, len(pointsInterface))
 	for i, v := range pointsInterface {
-		points[i] = int(v.(float64))
+		points[i] = v.(float64)
 	}
 	tool := &collectionmodels.CreativeTool{
 		Team:     body["Team"].(string),
@@ -561,9 +561,9 @@ func HandleAddNewCreativeTool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pointsInterface := body["Point"].([]interface{})
-	points := make([]int, len(pointsInterface))
+	points := make([]float64, len(pointsInterface))
 	for i, v := range pointsInterface {
-		points[i] = int(v.(float64))
+		points[i] = v.(float64)
 	}
 	tool := &collectionmodels.CreativeTool{
 		Team:     body["Team"].(string),

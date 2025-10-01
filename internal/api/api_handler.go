@@ -255,11 +255,16 @@ func HandleLastWeekTeamPerformance(w http.ResponseWriter, r *http.Request) {
 
 	if isAdmin {
 		var err error
-		teams, err = db.GetAllTeams(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"))
+		var tempTeams []*db.Team
+		tempTeams, err = db.GetAllTeams(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"))
 		if err != nil {
 			log.Println("Error getting all teams:", err)
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 			return
+		}
+		teams = []string{}
+		for _, t := range tempTeams {
+			teams = append(teams, t.ID)
 		}
 	}
 
@@ -306,11 +311,18 @@ func HandleTeamWeeklyTarget(w http.ResponseWriter, r *http.Request) {
 
 	if isAdmin {
 		var err error
-		teams, err = db.GetAllTeams(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"))
+		var tempTeams []*db.Team
+		// log out the URLm and DB name, and collection name
+		log.Printf("Getting all teams from DB: %s, Collection: %s", os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"))
+		tempTeams, err = db.GetAllTeams(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"))
 		if err != nil {
 			log.Println("Error getting all teams:", err)
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 			return
+		}
+		teams = []string{}
+		for _, t := range tempTeams {
+			teams = append(teams, t.ID)
 		}
 	}
 

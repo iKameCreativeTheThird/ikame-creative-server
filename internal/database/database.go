@@ -31,6 +31,10 @@ func ConnectMongoDB() error {
 	return nil
 }
 
+type Team struct {
+	ID string `bson:"_id"`
+}
+
 type TeamWeeklyTarget struct {
 	Team         string `bson:"team"`
 	WeeklyTarget int32  `bson:"point"`
@@ -390,7 +394,7 @@ func GetMemberRoles(uri, dbName, collName, email string) ([]*TeamRole, error) {
 	return results, nil
 }
 
-func GetAllTeams(uri, dbName, collName string) ([]string, error) {
+func GetAllTeams(uri, dbName, collName string) ([]*Team, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	collection := client.Database(dbName).Collection(collName)
@@ -407,7 +411,7 @@ func GetAllTeams(uri, dbName, collName string) ([]string, error) {
 	}
 	defer cursor.Close(ctx)
 
-	var results []string
+	var results []*Team
 	if err = cursor.All(ctx, &results); err != nil {
 		return nil, err
 	}

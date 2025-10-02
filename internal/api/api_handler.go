@@ -40,19 +40,15 @@ var sessions = map[string]SessionData{}
 
 func PostHandlerPerformancePoint(w http.ResponseWriter, r *http.Request) {
 
-	// Handle preflight OPTIONS request
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	var body map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		log.Fatal(err)
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
 	isTeamStr := r.URL.Query().Get("isTeam")
+	isWeeklyStr := r.URL.Query().Get("isWeekly")
 	startTimeStr := body["startDate"].(string)
 	endTimeStr := body["endDate"].(string)
 	identifiersInterface := body["identifiers"].([]interface{})
@@ -63,10 +59,11 @@ func PostHandlerPerformancePoint(w http.ResponseWriter, r *http.Request) {
 	startTime, _ := time.Parse(time.RFC3339, startTimeStr)
 	endTime, _ := time.Parse(time.RFC3339, endTimeStr)
 
-	var results []*db.PerformancePoint
+	var results []db.PerformancePointTotalWithTime
 	for _, id := range identifiers {
-		res, err := db.GetPerformancePoint(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_COMPLETED_TASK"), id, startTime, endTime, isTeamStr == "true")
+		res, err := db.GetPerformancePoints(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_COMPLETED_TASK"), id, startTime, endTime, isTeamStr == "true", isWeeklyStr == "true")
 		if err != nil {
+			log.Fatal(err)
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -88,7 +85,7 @@ func PostHandlerStaffMember(w http.ResponseWriter, r *http.Request) {
 	// if contains Admin role, allow all teams
 	isAdmin := false
 	for _, role := range teamRoles {
-		if role.Role == "Admin" {
+		if role.Role == "admin" {
 			isAdmin = true
 			break
 		}
@@ -97,7 +94,7 @@ func PostHandlerStaffMember(w http.ResponseWriter, r *http.Request) {
 	var managerOfTeams []string
 	if !isAdmin {
 		for _, role := range teamRoles {
-			if role.Role == "Manager" {
+			if role.Role == "manager" {
 				managerOfTeams = append(managerOfTeams, role.Team)
 			}
 		}
@@ -247,7 +244,7 @@ func HandleLastWeekTeamPerformance(w http.ResponseWriter, r *http.Request) {
 
 	isAdmin := false
 	for _, role := range teamRoles {
-		if role.Role == "Admin" {
+		if role.Role == "admin" {
 			isAdmin = true
 			break
 		}
@@ -268,12 +265,19 @@ func HandleLastWeekTeamPerformance(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	thisMonday := time.Now().AddDate(0, 0, -int(time.Now().Weekday())+1)
-	lastMonday := thisMonday.AddDate(0, 0, -7)
-	var results []*db.PerformancePoint
+	// Tính toán startDate là 0 giờ thứ 3 tuần trước, endDate là trước nửa đêm thứ 2 tuần này
+	now := time.Now()
+	// Tìm thứ 2 tuần này
+	monday := now.AddDate(0, 0, -int(now.Weekday())+1)
+	// End time là trước nửa đêm thứ 2 (23:59:59)
+	endDate := time.Date(monday.Year(), monday.Month(), monday.Day(), 23, 59, 59, 0, monday.Location())
+	// Start time là 0 giờ thứ 3 tuần trước
+	lastWeekTuesday := monday.AddDate(0, 0, -6) // Thứ 3 tuần trước
+	startDate := time.Date(lastWeekTuesday.Year(), lastWeekTuesday.Month(), lastWeekTuesday.Day(), 0, 0, 0, 0, lastWeekTuesday.Location())
+	var results []db.PerformancePointTotalWithTime
 	if len(teams) > 0 {
 		for _, team := range teams {
-			res, err := db.GetPerformancePoint(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_COMPLETED_TASK"), team, lastMonday, thisMonday, true)
+			res, err := db.GetPerformancePoints(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_COMPLETED_TASK"), team, startDate, endDate, true, false)
 			if err != nil {
 				http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 				log.Println("Database error:", err)
@@ -303,7 +307,7 @@ func HandleTeamWeeklyTarget(w http.ResponseWriter, r *http.Request) {
 
 	isAdmin := false
 	for _, role := range teamRoles {
-		if role.Role == "Admin" {
+		if role.Role == "admin" {
 			isAdmin = true
 			break
 		}
@@ -313,7 +317,7 @@ func HandleTeamWeeklyTarget(w http.ResponseWriter, r *http.Request) {
 		var err error
 		var tempTeams []*db.Team
 		// log out the URLm and DB name, and collection name
-		log.Printf("Getting all teams from DB: %s, Collection: %s", os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"))
+		//log.Printf("Getting all teams from DB: %s, Collection: %s", os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"))
 		tempTeams, err = db.GetAllTeams(os.Getenv("MONGO_URI"), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_STAFF_MEMBER"))
 		if err != nil {
 			log.Println("Error getting all teams:", err)
@@ -968,6 +972,6 @@ func Init() {
 	http.Handle("/post/delete-weekly-order", CORSMiddleware(http.HandlerFunc(HandleDeleteWeeklyOrder)))
 
 	http.Handle("/post/project-issues", CORSMiddleware(http.HandlerFunc(HandlePostProjectIssues)))
-
 	go ClearSessionMapSchedule()
+
 }

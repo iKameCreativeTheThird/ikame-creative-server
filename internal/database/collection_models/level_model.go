@@ -71,3 +71,18 @@ func GetAllLevels(client *mongo.Client, dbName, collectionName string) ([]Level,
 	}
 	return levels, nil
 }
+
+func GetAllLevelByTeam(client *mongo.Client, dbName, collectionName, team string) ([]Level, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	collection := client.Database(dbName).Collection(collectionName)
+	cursor, err := collection.Find(ctx, bson.M{"team": team})
+	if err != nil {
+		return nil, err
+	}
+	var levels []Level
+	if err := cursor.All(ctx, &levels); err != nil {
+		return nil, err
+	}
+	return levels, nil
+}

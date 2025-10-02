@@ -15,6 +15,7 @@ type CreativeTool struct {
 	ToolName string             `bson:"tool_name"`
 	Type     string             `bson:"type"`
 	Point    []float64          `bson:"point"`
+	Index    int                `bson:"index"`
 }
 
 func GetCreativeToolByTeam(client *mongo.Client, dbName, collectionName, team string) (*CreativeTool, error) {

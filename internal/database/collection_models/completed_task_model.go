@@ -8,7 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type CompletedTask struct {
@@ -16,7 +15,7 @@ type CompletedTask struct {
 	TaskID     string             `bson:"id"`
 	TaskName   string             `bson:"task_name"`
 	AssigneeID string             `bson:"assignee_id"`
-	Tool       []string           `bson:"tool"`
+	Tool       []int              `bson:"tool"`
 	Level      int                `bson:"level"`
 	TaskType   string             `bson:"task_type"`
 	Project    string             `bson:"project"`
@@ -32,31 +31,44 @@ type CompletedTask struct {
 //	  }
 //	}
 //
-// GetCompletedTasksByDateRange retrieves completed tasks between two dates (inclusive)
-func GetCompletedTasksByDateRange(ctx context.Context, collection *mongo.Collection, startDate, endDate time.Time) ([]CompletedTask, error) {
+
+func GetCompletedTasksByDateRange(client *mongo.Client, dbName, collectionName string, isTeam bool, identifier string, startDate, endDate time.Time) ([]CompletedTask, error) {
+	collection := client.Database(dbName).Collection(collectionName)
+
+	var indentifierKey string
+	if isTeam {
+		indentifierKey = "team"
+	} else {
+		indentifierKey = "assignee_id"
+	}
+
 	filter := bson.M{
+		indentifierKey: identifier,
 		"done_date": bson.M{
 			"$gte": startDate,
 			"$lte": endDate,
 		},
 	}
-	opts := options.Find()
-	cursor, err := collection.Find(ctx, filter, opts)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
-	var results []CompletedTask
+	var tasks []CompletedTask
 	for cursor.Next(ctx) {
 		var task CompletedTask
 		if err := cursor.Decode(&task); err != nil {
 			return nil, err
 		}
-		results = append(results, task)
+		tasks = append(tasks, task)
 	}
 	if err := cursor.Err(); err != nil {
 		return nil, err
 	}
-	return results, nil
+	return tasks, nil
 }

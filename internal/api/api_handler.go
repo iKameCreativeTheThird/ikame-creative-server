@@ -816,6 +816,7 @@ func HandleGetWeeklyOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleUpdateWeeklyOrder(w http.ResponseWriter, r *http.Request) {
+
 	// TODO : implement role-based access control
 	var body map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -831,11 +832,11 @@ func HandleUpdateWeeklyOrder(w http.ResponseWriter, r *http.Request) {
 		Goal:      body["Goal"].(string),
 		Strategy:  body["Strategy"].(string),
 		Project:   body["Project"].(string),
-		CPP:       body["CPP"].(int),
-		Icon:      body["Icon"].(int),
-		Banner:    body["Banner"].(int),
-		Video:     body["Video"].(int),
-		PLA:       body["PLA"].(int),
+		CPP:       (int)(body["CPP"].(float64)),
+		Icon:      (int)(body["Icon"].(float64)),
+		Banner:    (int)(body["Banner"].(float64)),
+		Video:     (int)(body["Video"].(float64)),
+		PLA:       (int)(body["PLA"].(float64)),
 	}
 
 	err := collectionmodels.UpdateWeeklyOrder(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_WEEKLY_ORDER"), order)
@@ -861,11 +862,11 @@ func HandleAddNewWeeklyOrder(w http.ResponseWriter, r *http.Request) {
 		Goal:      body["Goal"].(string),
 		Strategy:  body["Strategy"].(string),
 		Project:   body["Project"].(string),
-		CPP:       body["CPP"].(int),
-		Icon:      body["Icon"].(int),
-		Banner:    body["Banner"].(int),
-		Video:     body["Video"].(int),
-		PLA:       body["PLA"].(int),
+		CPP:       (int)(body["CPP"].(float64)),
+		Icon:      (int)(body["Icon"].(float64)),
+		Banner:    (int)(body["Banner"].(float64)),
+		Video:     (int)(body["Video"].(float64)),
+		PLA:       (int)(body["PLA"].(float64)),
 	}
 	err := collectionmodels.InsertWeeklyOrder(db.GetMongoClient(), os.Getenv("MONGODB_NAME"), os.Getenv("MONGODB_COLLECTION_WEEKLY_ORDER"), order)
 	if err != nil {

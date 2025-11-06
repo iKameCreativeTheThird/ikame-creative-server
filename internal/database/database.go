@@ -711,9 +711,10 @@ func GetPerformancePointTotals(identifier string, tasks []collectionmodels.Compl
 	for _, task := range tasks {
 		var TaskPoint = GetPointByLevel(level, task.Team, task.Level)
 		factor, sum := GetCreativeTaskFactor(toolList, task.Tool, task.Level, task.Team)
-		var CreativeTaskPoint = float64(TaskPoint) * factor
+		var BasePoint = float64(TaskPoint) * factor
 		var CreativeProcessPoint = sum
-		var BasePoint = float64(TaskPoint) - CreativeTaskPoint
+		var CreativeTaskPoint = float64(TaskPoint) - BasePoint
+
 		var CreativePoint = CreativeTaskPoint + CreativeProcessPoint
 		var TotalPerformance = BasePoint + CreativePoint
 
@@ -764,7 +765,7 @@ func GetCreativeTaskFactor(tools []collectionmodels.CreativeTool, inUsed []int, 
 	for _, t := range filteredTools {
 		if t.Type == "t" {
 			if level > 0 && level <= len(t.Point) {
-				factor *= t.Point[level-1]
+				factor *= (1 - t.Point[level-1])
 			}
 		} else {
 			if len(t.Point) > 0 {
